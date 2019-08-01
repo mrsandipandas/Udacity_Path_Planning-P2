@@ -109,12 +109,12 @@ A really helpful resource for doing this project and creating smooth trajectorie
 
 * Smooth trajectories are generated using the spline function library ```Line 237-260```.
 * ```Line 140-200``` contains the code for the state machine.
- * Can go from Lane 0 --> Lane 1
- * Can go from Lane 2 --> Lane 1
- * Can go from Lane 1 --> Lane 0 or Lane 2
-  * Calculate the squared distance between the end of the generated spline paths and the vehicles in Lane 0
-  * Calculate the squared distance between the end of the generated spline paths and the vehicles in Lane 1
-  * Choose going to Lane with maximum safe distance
+  * Can go from Lane 0 --> Lane 1
+  * Can go from Lane 2 --> Lane 1
+  * Can go from Lane 1 --> Lane 0 or Lane 2
+    * Calculate the squared distance between the end of the generated spline paths and the vehicles in Lane 0
+    * Calculate the squared distance between the end of the generated spline paths and the vehicles in Lane 1
+    * Choose going to Lane with maximum safe distance
 
 ## Result
 The result can be seen as follows:![One pass along the track without errors](result/result.png)
