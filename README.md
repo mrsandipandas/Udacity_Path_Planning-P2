@@ -117,4 +117,4 @@ A really helpful resource for doing this project and creating smooth trajectorie
   * Choose going to Lane with maximum safe distance
 
 ## Result
-The result can be seen as follows:[here](result/result.png)
+The result can be seen as follows:![One pass along the track without errors](result/result.png)
