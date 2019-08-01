@@ -15,7 +15,33 @@ using std::string;
 using std::vector;
 
 int lane = 1;
-double ref_vel = 49.5;
+const double MAX_SPEED = 49.5;
+const double MAX_ACC = .224;
+const double MIN_GAP = 30;
+// Calculate if safe to change to specified lane
+template<typename Type>
+bool IsSafe(int lane, Type sensor_fusion, int prev_path_size, double car_s) {
+  bool safe = true;
+  for (int i=0; i<sensor_fusion.size(); i++) {
+    float d = sensor_fusion[i][6];
+    if (d < (2+4*lane+2) && d > (2+4*lane-2)) {
+      double vx = sensor_fusion[i][3];
+      double vy = sensor_fusion[i][4];
+      double check_speed = sqrt(vx*vx + vy*vy);
+      double check_car_s = sensor_fusion[i][5];
+      check_car_s += ((double)prev_path_size*.02*check_speed);
+
+      if ((check_car_s > car_s) && ((check_car_s-car_s) < MIN_GAP)) {
+        safe &= false;
+      }
+      else {
+        safe &= true;
+      }
+    }
+  }
+  return safe;
+}
+
 
 int main() {
   uWS::Hub h;
@@ -89,7 +115,7 @@ int main() {
           double end_path_d = j[1]["end_path_d"];
 
           // Sensor Fusion Data, a list of all other cars on the same side 
-          //   of the road.
+          // of the road.
           auto sensor_fusion = j[1]["sensor_fusion"];
 
           int prev_path_size = previous_path_x.size();
@@ -100,7 +126,9 @@ int main() {
           * TODO: define a path made up of (x,y) points that the car will visit
           * sequentially every .02 seconds
           */
-          
+          double ref_vel;
+          vector<double> next_x_vals;
+          vector<double> next_y_vals;
           vector<double> pt_sx;
           vector<double> pt_sy;
           double ref_x = car_x;
@@ -111,7 +139,6 @@ int main() {
             car_s = end_path_s;
           } 
           bool too_close = false;
-
           for (int i=0; i<sensor_fusion.size(); i++) {
             float d = sensor_fusion[i][6];
             if (d < (2+4*lane+2) && d > (2+4*lane-2)) {
@@ -119,23 +146,68 @@ int main() {
               double vy = sensor_fusion[i][4];
               double check_speed = sqrt(vx*vx + vy*vy);
               double check_car_s = sensor_fusion[i][5];
-
               check_car_s += ((double)prev_path_size*.02*check_speed);
-              if ((check_car_s > car_s) && ((check_car_s-car_s) < 30)) {
+
+              if ((check_car_s > car_s) && ((check_car_s-car_s) < MIN_GAP)) {
                 too_close = true;
-                //try changing lanes as well here
-                if (lane > 0) {
-                  lane = 0;
+                //try changing lanes with FSM if the leading car is slow
+                if (lane == 0) {
+                  if (IsSafe(1, sensor_fusion, prev_path_size, car_s)) {
+                    lane = 1;
+                  }
+                }
+                else if (lane == 1) {
+                  bool lane_safe_0 = IsSafe(0, sensor_fusion, prev_path_size, car_s);
+                  bool lane_safe_2 = IsSafe(2, sensor_fusion, prev_path_size, car_s);
+                  if (lane_safe_0 && lane_safe_2) {
+                    double dist_safe_0 = 0.0;
+                    double dist_safe_2 = 0.0;
+                    for (int j=0; j<sensor_fusion.size(); j++) {
+                      float d_lane = sensor_fusion[j][6];
+                      if (d_lane < (2+4*0+2) && d > (2+4*0-2)) {
+                        if (next_x_vals.size() > 0){
+                          dist_safe_0 += distance(next_x_vals[next_x_vals.size()-1], next_y_vals[next_y_vals.size()-1], sensor_fusion[j][1], sensor_fusion[j][2]);
+                        }                       
+                      } else if (d_lane < (2+4*2+2) && d > (2+4*2-2)) {
+                        if (next_x_vals.size() > 0){
+                          dist_safe_2 += distance(next_x_vals[next_x_vals.size()-1], next_y_vals[next_y_vals.size()-1], sensor_fusion[j][1], sensor_fusion[j][2]);
+                        }
+                      }    
+                    }
+                    if (dist_safe_0 > dist_safe_2){
+                      lane = 0;
+                    }   
+                    else {
+                      lane = 2;
+                    }
+                  } 
+                  else if (lane_safe_0) {
+                    lane = 0;
+                  }
+                  else if (lane_safe_2) {
+                    lane = 2;
+                  }
+                  else {
+                    continue;
+                  }
+                }
+                else if (lane == 2) {
+                  if (IsSafe(1, sensor_fusion, prev_path_size, car_s)) {
+                    lane = 1;
+                  }
+                }
+                else {
+                  continue;
                 }
               }
             }
           }
 
           if (too_close) {
-            ref_vel -=.224;
+            ref_vel -= MAX_ACC;
           }
-          else if (ref_vel < 49.5) {
-            ref_vel += .224;
+          else if (ref_vel < MAX_SPEED) {
+            ref_vel += MAX_ACC;
           }
 
           if (prev_path_size < 2) {
@@ -185,9 +257,6 @@ int main() {
           tk::spline s;
 
           s.set_points(pt_sx, pt_sy);
-
-          vector<double> next_x_vals;
-          vector<double> next_y_vals;
 
           //double dist_inc = 0.4;
           //angle = deg2rad(car_yaw);
