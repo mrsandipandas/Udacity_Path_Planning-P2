@@ -258,8 +258,6 @@ int main() {
 
           s.set_points(pt_sx, pt_sy);
 
-          //double dist_inc = 0.4;
-          //angle = deg2rad(car_yaw);
           for (int i = 0; i < previous_path_x.size(); ++i) {    
             next_x_vals.push_back(previous_path_x[i]);
             next_y_vals.push_back(previous_path_y[i]);
